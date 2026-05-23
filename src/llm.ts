@@ -3,6 +3,12 @@ import { CFG } from "./config.js";
 
 export const client = new OpenAI({ apiKey: CFG.apiKey, baseURL: CFG.baseURL });
 
+export interface Usage {
+  prompt: number;
+  completion: number;
+  total: number;
+}
+
 export async function chat(
   messages: OpenAI.ChatCompletionMessageParam[],
   tools?: OpenAI.ChatCompletionTool[],
@@ -16,25 +22,39 @@ export async function chat(
   return res.choices[0].message;
 }
 
+export interface StreamResult {
+  message: OpenAI.ChatCompletionMessage;
+  usage: Usage | null;
+}
+
 export async function chatStream(
   messages: OpenAI.ChatCompletionMessageParam[],
   tools?: OpenAI.ChatCompletionTool[],
   onText?: (delta: string) => void,
   onReasoning?: (delta: string) => void,
-): Promise<OpenAI.ChatCompletionMessage> {
+): Promise<StreamResult> {
   const stream = await client.chat.completions.create({
     model: CFG.model,
     messages,
     tools,
     tool_choice: tools?.length ? "auto" : undefined,
     stream: true,
+    stream_options: { include_usage: true },
   });
 
   let content = "";
   let reasoning = "";
   const toolCalls: any[] = [];
+  let usage: Usage | null = null;
 
   for await (const chunk of stream) {
+    if (chunk.usage) {
+      usage = {
+        prompt: chunk.usage.prompt_tokens ?? 0,
+        completion: chunk.usage.completion_tokens ?? 0,
+        total: chunk.usage.total_tokens ?? 0,
+      };
+    }
     const delta = chunk.choices[0]?.delta as any;
     if (!delta) continue;
 
@@ -65,5 +85,5 @@ export async function chatStream(
     tool_calls: toolCalls.length ? toolCalls : undefined,
   };
   if (reasoning) msg.reasoning_content = reasoning;
-  return msg as OpenAI.ChatCompletionMessage;
+  return { message: msg as OpenAI.ChatCompletionMessage, usage };
 }
