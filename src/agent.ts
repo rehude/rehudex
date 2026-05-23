@@ -1,6 +1,7 @@
 import { chatStream } from "./llm.js";
 import { getTool, toOpenAITools } from "./tools/index.js";
 import { CFG } from "./config.js";
+import { createStreamRenderer } from "./render.js";
 import pc from "picocolors";
 import type OpenAI from "openai";
 
@@ -10,35 +11,38 @@ export async function agentRun(
 ): Promise<void> {
   history.push({ role: "user", content: userInput });
 
+  const renderer = createStreamRenderer();
+
   for (let i = 0; i < CFG.maxIterations; i++) {
-    let phase: "none" | "reasoning" | "content" = "none";
+    const state = { phase: "none" as "none" | "reasoning" | "content" };
     const assistant = await chatStream(
       history,
       toOpenAITools(),
       (t) => {
-        if (phase !== "content") {
-          if (phase === "reasoning") process.stdout.write("\n");
-          process.stdout.write(pc.cyan("[回答] "));
-          phase = "content";
+        if (state.phase !== "content") {
+          if (state.phase === "reasoning") process.stdout.write("\n");
+          process.stdout.write(pc.cyan("[回答]\n"));
+          renderer.reset();
+          state.phase = "content";
         }
-        process.stdout.write(pc.gray(t));
+        renderer.write(t);
       },
       (t) => {
-        if (phase !== "reasoning") {
+        if (state.phase !== "reasoning") {
           process.stdout.write(pc.dim("[思考] "));
-          phase = "reasoning";
+          state.phase = "reasoning";
         }
         process.stdout.write(pc.dim(t));
       },
     );
+    if (state.phase === "content") renderer.finish();
     history.push(assistant);
 
     if (!assistant.tool_calls?.length) {
-      process.stdout.write("\n");
       return;
     }
 
-    if (phase !== "none") process.stdout.write("\n");
+    if (state.phase !== "none") process.stdout.write("\n");
     for (const call of assistant.tool_calls) {
       if (call.type !== "function") continue;
       const tool = getTool(call.function.name);

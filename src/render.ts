@@ -1,0 +1,81 @@
+import { renderToAnsi } from "md4x";
+
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
+
+function isWide(cp: number): boolean {
+  return (
+    (cp >= 0x1100 && cp <= 0x115f) ||
+    (cp >= 0x2e80 && cp <= 0x9fff) ||
+    (cp >= 0xa000 && cp <= 0xa4cf) ||
+    (cp >= 0xac00 && cp <= 0xd7a3) ||
+    (cp >= 0xf900 && cp <= 0xfaff) ||
+    (cp >= 0xfe30 && cp <= 0xfe4f) ||
+    (cp >= 0xff00 && cp <= 0xff60) ||
+    (cp >= 0xffe0 && cp <= 0xffe6)
+  );
+}
+
+function visualWidth(line: string): number {
+  let w = 0;
+  for (const ch of line.replace(ANSI_RE, "")) {
+    w += isWide(ch.codePointAt(0)!) ? 2 : 1;
+  }
+  return w;
+}
+
+function visualRows(text: string, cols: number): number {
+  const segments = text.split("\n");
+  if (segments[segments.length - 1] === "") segments.pop();
+  let rows = 0;
+  for (const seg of segments) {
+    rows += Math.max(1, Math.ceil(visualWidth(seg) / cols));
+  }
+  return rows;
+}
+
+export interface StreamRenderer {
+  write(delta: string): void;
+  finish(): void;
+  reset(): void;
+}
+
+export function createStreamRenderer(): StreamRenderer {
+  if (!process.stdout.isTTY) {
+    return {
+      write: (d) => void process.stdout.write(d),
+      finish: () => {},
+      reset: () => {},
+    };
+  }
+
+  let buffer = "";
+  let prevRows = 0;
+
+  const redraw = (heal: boolean) => {
+    let out = renderToAnsi(buffer, { heal });
+    if (!out.endsWith("\n")) out += "\n";
+    const cols = process.stdout.columns || 80;
+    if (prevRows > 0) {
+      process.stdout.write(`\x1b[${prevRows}A\r\x1b[J`);
+    } else {
+      process.stdout.write("\r\x1b[J");
+    }
+    process.stdout.write(out);
+    prevRows = visualRows(out, cols);
+  };
+
+  return {
+    write(delta) {
+      buffer += delta;
+      redraw(true);
+    },
+    finish() {
+      redraw(false);
+      prevRows = 0;
+    },
+    reset() {
+      buffer = "";
+      prevRows = 0;
+    },
+  };
+}

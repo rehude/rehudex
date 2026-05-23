@@ -210,6 +210,9 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
+      md4x:
+        specifier: ^0.0.25
+        version: 0.0.25
       openai:
         specifier: ^6.39.0
         version: 6.39.0
@@ -402,6 +405,10 @@ packages:
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
+  md4x@0.0.25:
+    resolution: {integrity: sha512-GrexawUhrKcwl7o2hkgs7Ut0PqI/meOCevmaRB1ueKo2y1Fh2nIl8e6KKawYGm9eXJP3u6BzVs4rzZOc2+w3hA==}
+    hasBin: true
+
   openai@6.39.0:
     resolution: {integrity: sha512-O61LIsimY3acVabwvomwFhwrnN36yvHY2quIfy9keEcFytGgWeV35yLHQ6NVMLSBxRpHmcg2yuhCnlu2HT4pLQ==}
     hasBin: true
@@ -547,6 +554,8 @@ snapshots:
 
   fsevents@2.3.3:
     optional: true
+
+  md4x@0.0.25: {}
 
   openai@6.39.0: {}
 
