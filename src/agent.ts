@@ -11,8 +11,25 @@ export async function agentRun(
   history.push({ role: "user", content: userInput });
 
   for (let i = 0; i < CFG.maxIterations; i++) {
-    const assistant = await chatStream(history, toOpenAITools(), (t) =>
-      process.stdout.write(pc.gray(t)),
+    let phase: "none" | "reasoning" | "content" = "none";
+    const assistant = await chatStream(
+      history,
+      toOpenAITools(),
+      (t) => {
+        if (phase !== "content") {
+          if (phase === "reasoning") process.stdout.write("\n");
+          process.stdout.write(pc.cyan("[回答] "));
+          phase = "content";
+        }
+        process.stdout.write(pc.gray(t));
+      },
+      (t) => {
+        if (phase !== "reasoning") {
+          process.stdout.write(pc.dim("[思考] "));
+          phase = "reasoning";
+        }
+        process.stdout.write(pc.dim(t));
+      },
     );
     history.push(assistant);
 
@@ -21,7 +38,7 @@ export async function agentRun(
       return;
     }
 
-    if (assistant.content) process.stdout.write("\n");
+    if (phase !== "none") process.stdout.write("\n");
     for (const call of assistant.tool_calls) {
       if (call.type !== "function") continue;
       const tool = getTool(call.function.name);

@@ -20,6 +20,7 @@ export async function chatStream(
   messages: OpenAI.ChatCompletionMessageParam[],
   tools?: OpenAI.ChatCompletionTool[],
   onText?: (delta: string) => void,
+  onReasoning?: (delta: string) => void,
 ): Promise<OpenAI.ChatCompletionMessage> {
   const stream = await client.chat.completions.create({
     model: CFG.model,
@@ -39,6 +40,7 @@ export async function chatStream(
 
     if (delta.reasoning_content) {
       reasoning += delta.reasoning_content;
+      onReasoning?.(delta.reasoning_content);
     }
     if (delta.content) {
       content += delta.content;
