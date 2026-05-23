@@ -3,6 +3,7 @@ import { getTool, toOpenAITools } from "./tools/index.js";
 import { CFG } from "./config.js";
 import { createStreamRenderer } from "./render.js";
 import { formatApiError } from "./errors.js";
+import { SessionStore } from "./session.js";
 import pc from "picocolors";
 import type OpenAI from "openai";
 
@@ -14,8 +15,14 @@ export interface AgentRunResult {
 export async function agentRun(
   userInput: string,
   history: OpenAI.ChatCompletionMessageParam[],
+  store: SessionStore,
 ): Promise<AgentRunResult> {
-  history.push({ role: "user", content: userInput });
+  const userMsg: OpenAI.ChatCompletionMessageParam = {
+    role: "user",
+    content: userInput,
+  };
+  history.push(userMsg);
+  store.append(userMsg);
 
   const renderer = createStreamRenderer();
   const total: Usage = { prompt: 0, completion: 0, total: 0 };
@@ -50,6 +57,7 @@ export async function agentRun(
         total.total += usage.total;
       }
       history.push(assistant);
+      store.append(assistant);
 
       if (!assistant.tool_calls?.length) {
         return { usage: total };
@@ -70,6 +78,7 @@ export async function agentRun(
           result = `Error: ${e.message}`;
         }
         history.push({ role: "tool", tool_call_id: call.id, content: result });
+        store.append({ role: "tool", tool_call_id: call.id, content: result });
       }
     }
     console.log(pc.red(`已达最大迭代次数 ${CFG.maxIterations},强制中断`));

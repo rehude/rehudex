@@ -9,6 +9,7 @@
 - 🛠 **工具调用闭环**:Agent 主循环自动多轮调用工具直到任务完成
 - 🔒 **沙箱保护**:文件操作限制在工作目录内,写文件 / 执行 shell 需用户确认
 - 💬 **DeepSeek 思考模式兼容**:保留 `reasoning_content` 字段供 round-trip 使用
+- 💾 **会话持久化**:每条消息追加写入 JSONL,按项目 cwd 隔离,支持 `-c` 续接与 `/load` 跳转
 
 ## 安装
 
@@ -33,10 +34,36 @@ DEEPSEEK_MODEL=deepseek-chat                 # 可选,默认 deepseek-chat
 ## 启动
 
 ```bash
-pnpm dev
+pnpm dev           # 新建一个空白会话
+pnpm dev -- -c     # 续接本项目最近一次会话
 ```
 
 进入交互式 REPL,在 `>` 提示符后输入问题。`exit` 或 `Ctrl+C` 退出。
+
+## 会话管理
+
+每条消息(system / user / assistant / tool)实时追加到 JSONL 文件中,按当前工作目录天然隔离:
+
+```
+~/.easyagent/projects/<cwd 编码>/<sessionUUID>.jsonl
+```
+
+cwd 编码规则:把路径里的 `\` `/` `:` 全替换为 `-`(与 Claude Code 一致)。
+
+REPL 内置命令:
+
+| 命令 | 说明 |
+|---|---|
+| `/new` | 开一个全新会话(当前会话不丢,文件保留) |
+| `/list` | 列出本项目所有会话(按修改时间倒序,显示 ID 前 8 位 + 首条用户消息) |
+| `/load <id前8位>` | 跳到指定会话,支持任意长度前缀(冲突会提示) |
+| `exit` | 退出 |
+
+启动参数:
+
+| 参数 | 说明 |
+|---|---|
+| `-c` | 续接本项目最近一次会话,无历史则自动新建 |
 
 ## 内置工具
 
@@ -66,9 +93,10 @@ pnpm dev
 
 ```
 src/
-├── index.ts        # REPL 入口
+├── index.ts        # REPL 入口 + 启动参数 / 斜杠命令分发
 ├── agent.ts        # 多轮 tool_call Agent 主循环
 ├── llm.ts          # OpenAI SDK 封装(指向 DeepSeek)
+├── session.ts      # 会话持久化(JSONL append-only)
 ├── render.ts       # 流式 Markdown 终端渲染
 ├── prompts.ts      # 系统提示词
 ├── config.ts       # 环境变量配置
