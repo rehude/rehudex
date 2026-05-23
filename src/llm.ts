@@ -30,12 +30,16 @@ export async function chatStream(
   });
 
   let content = "";
+  let reasoning = "";
   const toolCalls: any[] = [];
 
   for await (const chunk of stream) {
-    const delta = chunk.choices[0]?.delta;
+    const delta = chunk.choices[0]?.delta as any;
     if (!delta) continue;
 
+    if (delta.reasoning_content) {
+      reasoning += delta.reasoning_content;
+    }
     if (delta.content) {
       content += delta.content;
       onText?.(delta.content);
@@ -53,9 +57,11 @@ export async function chatStream(
     }
   }
 
-  return {
+  const msg: any = {
     role: "assistant",
     content: content || null,
     tool_calls: toolCalls.length ? toolCalls : undefined,
-  } as OpenAI.ChatCompletionMessage;
+  };
+  if (reasoning) msg.reasoning_content = reasoning;
+  return msg as OpenAI.ChatCompletionMessage;
 }
