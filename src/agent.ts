@@ -1,4 +1,4 @@
-import { chat } from "./llm.js";
+import { chatStream } from "./llm.js";
 import { getTool, toOpenAITools } from "./tools/index.js";
 import { CFG } from "./config.js";
 import pc from "picocolors";
@@ -11,15 +11,17 @@ export async function agentRun(
   history.push({ role: "user", content: userInput });
 
   for (let i = 0; i < CFG.maxIterations; i++) {
-    const assistant = await chat(history, toOpenAITools());
+    const assistant = await chatStream(history, toOpenAITools(), (t) =>
+      process.stdout.write(pc.gray(t)),
+    );
     history.push(assistant);
 
     if (!assistant.tool_calls?.length) {
-      console.log(pc.gray(assistant.content ?? ""));
+      process.stdout.write("\n");
       return;
     }
 
-    if (assistant.content) console.log(pc.gray(assistant.content));
+    if (assistant.content) process.stdout.write("\n");
     for (const call of assistant.tool_calls) {
       if (call.type !== "function") continue;
       const tool = getTool(call.function.name);
