@@ -1,6 +1,16 @@
 import { renderToAnsi } from "md4x";
 
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
+const HIDE_CURSOR = "\x1b[?25l";
+const SHOW_CURSOR = "\x1b[?25h";
+const REDRAW_INTERVAL_MS = 60;
+
+let exitHandlerRegistered = false;
+function ensureCursorRestoreOnExit() {
+  if (exitHandlerRegistered) return;
+  exitHandlerRegistered = true;
+  process.on("exit", () => process.stdout.write(SHOW_CURSOR));
+}
 
 function isWide(cp: number): boolean {
   return (
@@ -48,34 +58,71 @@ export function createStreamRenderer(): StreamRenderer {
     };
   }
 
+  ensureCursorRestoreOnExit();
+
   let buffer = "";
   let prevRows = 0;
+  let cursorHidden = false;
+  let pendingTimer: NodeJS.Timeout | null = null;
+  let lastRenderAt = 0;
+
+  const hideCursor = () => {
+    if (!cursorHidden) {
+      process.stdout.write(HIDE_CURSOR);
+      cursorHidden = true;
+    }
+  };
+  const showCursor = () => {
+    if (cursorHidden) {
+      process.stdout.write(SHOW_CURSOR);
+      cursorHidden = false;
+    }
+  };
 
   const redraw = (heal: boolean) => {
     let out = renderToAnsi(buffer, { heal });
     if (!out.endsWith("\n")) out += "\n";
     const cols = process.stdout.columns || 80;
-    if (prevRows > 0) {
-      process.stdout.write(`\x1b[${prevRows}A\r\x1b[J`);
-    } else {
-      process.stdout.write("\r\x1b[J");
-    }
-    process.stdout.write(out);
+    const move = prevRows > 0 ? `\x1b[${prevRows}A\r\x1b[J` : "\r\x1b[J";
+    process.stdout.write(move + out);
     prevRows = visualRows(out, cols);
+    lastRenderAt = Date.now();
+  };
+
+  const cancelTimer = () => {
+    if (pendingTimer) {
+      clearTimeout(pendingTimer);
+      pendingTimer = null;
+    }
   };
 
   return {
     write(delta) {
       buffer += delta;
-      redraw(true);
+      hideCursor();
+      if (pendingTimer) return;
+      const elapsed = Date.now() - lastRenderAt;
+      if (elapsed >= REDRAW_INTERVAL_MS) {
+        redraw(true);
+      } else {
+        pendingTimer = setTimeout(() => {
+          pendingTimer = null;
+          redraw(true);
+        }, REDRAW_INTERVAL_MS - elapsed);
+      }
     },
     finish() {
+      cancelTimer();
       redraw(false);
       prevRows = 0;
+      showCursor();
     },
     reset() {
+      cancelTimer();
       buffer = "";
       prevRows = 0;
+      lastRenderAt = 0;
+      showCursor();
     },
   };
 }
