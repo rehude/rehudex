@@ -1,4 +1,3 @@
-import readline from "node:readline/promises";
 import pc from "picocolors";
 import { agentRun } from "./agent.js";
 import { SYSTEM_PROMPT } from "./prompts.js";
@@ -6,13 +5,14 @@ import { registerTool } from "./tools/index.js";
 import { readFile } from "./tools/readFile.js";
 import { writeFile } from "./tools/writeFile.js";
 import { shell } from "./tools/shell.js";
+import { getRL, closeRL } from "./cli.js";
 import type OpenAI from "openai";
 
 registerTool(readFile);
 registerTool(writeFile);
 registerTool(shell);
 
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const rl = getRL();
 const history: OpenAI.ChatCompletionMessageParam[] = [
   { role: "system", content: SYSTEM_PROMPT },
 ];
@@ -31,7 +31,7 @@ const shutdown = (code = 0) => {
     );
   }
   console.log(pc.cyan("再见 👋"));
-  rl.close();
+  closeRL();
   process.exit(code);
 };
 
@@ -60,9 +60,7 @@ while (!closed) {
     sessionUsage.completion += usage.completion;
     sessionUsage.total += usage.total;
     console.log(
-      pc.dim(
-        `(本轮 ${usage.total} / 累计 ${sessionUsage.total} tokens)`,
-      ),
+      pc.dim(`(本轮 ${usage.total} / 累计 ${sessionUsage.total} tokens)`),
     );
   }
 }
