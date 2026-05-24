@@ -31,7 +31,7 @@ pnpm add -g rehudex
 |---|---|
 | `<当前目录>/.env` | 项目内私有配置(覆盖全局) |
 | `~/.rehudex/.env` | **全局配置,推荐**,一次配好所有项目共用 |
-| 系统环境变量 | shell `export` 的 `DEEPSEEK_API_KEY` 等(`DEEPSEEK_API_KEY` / `DEEPSEEK_MODEL` 变量名沿用历史命名,实际指向哪家由 `LLM_BASE_URL` 决定) |
+| 系统环境变量 | shell `export` 的 `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` |
 
 **全局一次性配置(推荐):**
 
@@ -39,21 +39,21 @@ pnpm add -g rehudex
 # Linux / macOS / Git Bash
 mkdir -p ~/.rehudex
 cat > ~/.rehudex/.env <<EOF
-DEEPSEEK_API_KEY=sk-xxxxxxxx
+LLM_API_KEY=sk-xxxxxxxx
 EOF
 ```
 
 ```powershell
 # Windows PowerShell
 New-Item -ItemType Directory -Force -Path "$HOME\.rehudex" | Out-Null
-"DEEPSEEK_API_KEY=sk-xxxxxxxx" | Out-File -Encoding utf8 "$HOME\.rehudex\.env"
+"LLM_API_KEY=sk-xxxxxxxx" | Out-File -Encoding utf8 "$HOME\.rehudex\.env"
 ```
 
-完整可选字段(`DEEPSEEK_API_KEY` / `DEEPSEEK_MODEL` 两个名字是历史遗留,实际可指向任意 OpenAI 兼容 endpoint):
+完整可选字段(三个变量都是 endpoint-agnostic,指向哪家由 `LLM_BASE_URL` 决定):
 
 ```
 # 必填:API Key
-DEEPSEEK_API_KEY=sk-xxxxxxxx
+LLM_API_KEY=sk-xxxxxxxx
 
 # 可选:endpoint(默认 https://api.deepseek.com)
 # 示例:
@@ -64,7 +64,7 @@ DEEPSEEK_API_KEY=sk-xxxxxxxx
 LLM_BASE_URL=https://api.deepseek.com
 
 # 可选:模型名(默认 deepseek-chat,按 endpoint 换)
-DEEPSEEK_MODEL=deepseek-chat
+LLM_MODEL=deepseek-chat
 ```
 
 只要你的 LLM 服务实现了 OpenAI Chat Completions 协议(`/chat/completions` + tool calling),就能直接对接。
