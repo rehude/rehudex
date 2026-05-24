@@ -3,7 +3,16 @@
   "version": "0.2.0",
   "description": "终端 AI 助手 + 工具调用闭环,基于 DeepSeek。流式输出、Markdown 渲染、会话持久化。",
   "keywords": ["ai", "agent", "cli", "deepseek", "repl", "llm"],
+  "author": "rehude <rehude9@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rehude/EasyAgent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rehude/EasyAgent/issues"
+  },
+  "homepage": "https://github.com/rehude/EasyAgent#readme",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
