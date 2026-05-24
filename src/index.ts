@@ -7,6 +7,7 @@ import { writeFile } from "./tools/writeFile.js";
 import { shell } from "./tools/shell.js";
 import { getRL, closeRL } from "./cli.js";
 import { SessionStore } from "./session.js";
+import { renderHistory } from "./render.js";
 import type OpenAI from "openai";
 
 registerTool(readFile);
@@ -32,6 +33,7 @@ if (continueLast) {
     console.log(
       pc.cyan(`续接会话 ${store.id.slice(0, 8)} (${history.length} 条消息)`),
     );
+    renderHistory(history);
   } else {
     console.log(pc.yellow("本项目无历史会话,创建新会话"));
     store = SessionStore.create();
@@ -118,6 +120,7 @@ while (!closed) {
       console.log(
         pc.cyan(`已加载 ${store.id.slice(0, 8)} (${history.length} 条)`),
       );
+      renderHistory(history);
     } catch (e: any) {
       console.log(pc.red(e.message));
     }
