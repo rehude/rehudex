@@ -117,3 +117,9 @@ pnpm dev        # 用 tsx 直接运行 TS 源码
 pnpm build      # 编译到 dist/
 pnpm start      # 运行编译产物
 ```
+
+## 调试 / 抓包
+
+想用 Reqable / Fiddler / mitmproxy / Charles 抓到程序与 DeepSeek 之间的 HTTP 请求,见 [docs/debugging.md](docs/debugging.md)。
+
+简要:`pnpm dev:proxy` + 设置 `HTTPS_PROXY` 与 `NODE_EXTRA_CA_CERTS` 两个环境变量。
