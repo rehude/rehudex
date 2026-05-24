@@ -1,4 +1,6 @@
 import { renderToAnsi } from "md4x";
+import pc from "picocolors";
+import type OpenAI from "openai";
 
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
 const HIDE_CURSOR = "\x1b[?25l";
@@ -125,4 +127,34 @@ export function createStreamRenderer(): StreamRenderer {
       showCursor();
     },
   };
+}
+
+export function renderHistory(
+  messages: OpenAI.ChatCompletionMessageParam[],
+): void {
+  for (const m of messages) {
+    if (m.role === "user") {
+      const content = typeof m.content === "string" ? m.content : "";
+      if (content) process.stdout.write(pc.green("> ") + content + "\n");
+    } else if (m.role === "assistant") {
+      const content = typeof m.content === "string" ? m.content : "";
+      if (content) {
+        process.stdout.write(pc.cyan("[回答]\n"));
+        let out = renderToAnsi(content);
+        if (!out.endsWith("\n")) out += "\n";
+        process.stdout.write(out);
+      }
+      if (m.tool_calls?.length) {
+        for (const call of m.tool_calls) {
+          if (call.type === "function") {
+            process.stdout.write(
+              pc.yellow(
+                `⚙ ${call.function.name}(${call.function.arguments})`,
+              ) + "\n",
+            );
+          }
+        }
+      }
+    }
+  }
 }
