@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+import "./proxy.js";
 import pc from "picocolors";
 import { agentRun } from "./agent.js";
 import { SYSTEM_PROMPT } from "./prompts.js";
@@ -70,7 +72,7 @@ rl.on("close", () => {
   if (!closed) shutdown(0);
 });
 
-console.log(pc.cyan("easyAgent v0.2 — 输入 exit 或按 Ctrl+C 退出"));
+console.log(pc.cyan("rehudex v0.2 — 输入 exit 或按 Ctrl+C 退出"));
 console.log(pc.dim("命令: /new 新会话 | /list 列出 | /load <id前8位> 加载"));
 while (!closed) {
   let input: string;

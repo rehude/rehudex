@@ -11,7 +11,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type OpenAI from "openai";
 
-const ROOT = path.join(homedir(), ".easyagent", "projects");
+const ROOT = path.join(homedir(), ".rehudex", "projects");
 
 function encodeCwd(cwd: string): string {
   return cwd.replace(/[\\/:]/g, "-");

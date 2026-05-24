@@ -1,4 +1,4 @@
-# easyAgent
+# rehudex
 
 一个跑在终端的命令行 AI 助手,基于 DeepSeek 大模型,具备流式输出、Markdown 富文本渲染、工具调用闭环能力。
 
@@ -14,14 +14,40 @@
 ## 安装
 
 ```bash
-pnpm install
+npm i -g rehudex
+# 或
+pnpm add -g rehudex
 ```
 
 需要 Node.js ≥ 20。
 
 ## 配置
 
-复制 `.env.example` 为 `.env`,填入你的 DeepSeek API Key:
+`rehudex` 按以下顺序加载 `.env`(前者优先,不覆盖后者):
+
+| 位置 | 用途 |
+|---|---|
+| `<当前目录>/.env` | 项目内私有配置(覆盖全局) |
+| `~/.rehudex/.env` | **全局配置,推荐**,一次配好所有项目共用 |
+| 系统环境变量 | shell `export` 的 `DEEPSEEK_API_KEY` 等 |
+
+**全局一次性配置(推荐):**
+
+```bash
+# Linux / macOS / Git Bash
+mkdir -p ~/.rehudex
+cat > ~/.rehudex/.env <<EOF
+DEEPSEEK_API_KEY=sk-xxxxxxxx
+EOF
+```
+
+```powershell
+# Windows PowerShell
+New-Item -ItemType Directory -Force -Path "$HOME\.rehudex" | Out-Null
+"DEEPSEEK_API_KEY=sk-xxxxxxxx" | Out-File -Encoding utf8 "$HOME\.rehudex\.env"
+```
+
+完整可选字段:
 
 ```
 DEEPSEEK_API_KEY=sk-xxxxxxxx
@@ -34,18 +60,20 @@ DEEPSEEK_MODEL=deepseek-chat                 # 可选,默认 deepseek-chat
 ## 启动
 
 ```bash
-pnpm dev           # 新建一个空白会话
-pnpm dev -- -c     # 续接本项目最近一次会话
+rehudex           # 在当前目录新建一个空白会话
+rehudex -c        # 续接本目录最近一次会话
 ```
 
 进入交互式 REPL,在 `>` 提示符后输入问题。`exit` 或 `Ctrl+C` 退出。
+
+> 工具的读写范围与会话池都按 `rehudex` 启动时所在目录(cwd)隔离,**建议在项目根目录启动**。
 
 ## 会话管理
 
 每条消息(system / user / assistant / tool)实时追加到 JSONL 文件中,按当前工作目录天然隔离:
 
 ```
-~/.easyagent/projects/<cwd 编码>/<sessionUUID>.jsonl
+~/.rehudex/projects/<cwd 编码>/<sessionUUID>.jsonl
 ```
 
 cwd 编码规则:把路径里的 `\` `/` `:` 全替换为 `-`(与 Claude Code 一致)。
@@ -113,13 +141,23 @@ src/
 ## 开发
 
 ```bash
+pnpm install
 pnpm dev        # 用 tsx 直接运行 TS 源码
 pnpm build      # 编译到 dist/
 pnpm start      # 运行编译产物
 ```
 
+## 发布到 npm
+
+```bash
+pnpm build              # prepublishOnly 也会自动跑
+npm publish             # 已登录 npm 后,一条命令发布
+```
+
+`package.json` 的 `files` 字段限定只打 `dist/` 和 `README.md`,不会带 `src/`、`.env` 出去。发布前可用 `npm pack` 干跑一遍验证。
+
 ## 调试 / 抓包
 
 想用 Reqable / Fiddler / mitmproxy / Charles 抓到程序与 DeepSeek 之间的 HTTP 请求,见 [docs/debugging.md](docs/debugging.md)。
 
-简要:`pnpm dev:proxy` + 设置 `HTTPS_PROXY` 与 `NODE_EXTRA_CA_CERTS` 两个环境变量。
+简要:设置 `HTTPS_PROXY` 与 `NODE_EXTRA_CA_CERTS` 两个环境变量,然后正常启动 `rehudex`(或 `pnpm dev`)即可。代理支持已内置在 `src/proxy.ts`。
