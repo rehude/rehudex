@@ -4,26 +4,45 @@ import { platform } from "node:os";
 interface ClipCmd {
   cmd: string;
   args: string[];
+  encoding: "utf8" | "utf16le-bom";
 }
 
 function candidates(): ClipCmd[] {
   switch (platform()) {
     case "win32":
-      return [{ cmd: "clip", args: [] }];
+      return [
+        {
+          cmd: "powershell",
+          args: [
+            "-NoProfile",
+            "-Command",
+            "[Console]::InputEncoding=[System.Text.Encoding]::UTF8;Set-Clipboard -Value ([Console]::In.ReadToEnd())",
+          ],
+          encoding: "utf8",
+        },
+        { cmd: "clip", args: [], encoding: "utf16le-bom" },
+      ];
     case "darwin":
-      return [{ cmd: "pbcopy", args: [] }];
+      return [{ cmd: "pbcopy", args: [], encoding: "utf8" }];
     default:
       return [
-        { cmd: "wl-copy", args: [] },
-        { cmd: "xclip", args: ["-selection", "clipboard"] },
-        { cmd: "xsel", args: ["--clipboard", "--input"] },
+        { cmd: "wl-copy", args: [], encoding: "utf8" },
+        { cmd: "xclip", args: ["-selection", "clipboard"], encoding: "utf8" },
+        { cmd: "xsel", args: ["--clipboard", "--input"], encoding: "utf8" },
       ];
   }
 }
 
-function tryOne(text: string, { cmd, args }: ClipCmd): Promise<void> {
+function encodeText(text: string, enc: ClipCmd["encoding"]): Buffer {
+  if (enc === "utf16le-bom") {
+    return Buffer.from("﻿" + text, "utf16le");
+  }
+  return Buffer.from(text, "utf8");
+}
+
+function tryOne(text: string, c: ClipCmd): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { stdio: ["pipe", "ignore", "pipe"] });
+    const child = spawn(c.cmd, c.args, { stdio: ["pipe", "ignore", "pipe"] });
     let stderr = "";
     child.on("error", reject);
     child.stderr.on("data", (chunk) => {
@@ -31,9 +50,9 @@ function tryOne(text: string, { cmd, args }: ClipCmd): Promise<void> {
     });
     child.on("close", (code) => {
       if (code === 0) resolve();
-      else reject(new Error(`${cmd} 退出码 ${code}${stderr ? ": " + stderr.trim() : ""}`));
+      else reject(new Error(`${c.cmd} 退出码 ${code}${stderr ? ": " + stderr.trim() : ""}`));
     });
-    child.stdin.end(text, "utf8");
+    child.stdin.end(encodeText(text, c.encoding));
   });
 }
 
