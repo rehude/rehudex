@@ -2,9 +2,15 @@ import readline from "node:readline/promises";
 
 let sharedRl: readline.Interface | null = null;
 
-export function getRL(): readline.Interface {
+type SyncCompleter = (line: string) => [string[], string];
+
+export function getRL(completer?: SyncCompleter): readline.Interface {
   if (!sharedRl) {
-    sharedRl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    sharedRl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+      completer,
+    });
   }
   return sharedRl;
 }

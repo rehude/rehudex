@@ -10,13 +10,16 @@ import { shell } from "./tools/shell.js";
 import { getRL, closeRL } from "./cli.js";
 import { SessionStore } from "./session.js";
 import { renderHistory } from "./render.js";
+import { getCommand, type CommandContext } from "./commands.js";
+import { buildCompleter, expandAtRefs } from "./completer.js";
+import { runShell, CURRENT_SHELL } from "./shellExec.js";
 import type OpenAI from "openai";
 
 registerTool(readFile);
 registerTool(writeFile);
 registerTool(shell);
 
-const rl = getRL();
+const rl = getRL(buildCompleter());
 
 const continueLast = process.argv.slice(2).includes("-c");
 const systemMsg: OpenAI.ChatCompletionMessageParam = {
@@ -73,7 +76,20 @@ rl.on("close", () => {
 });
 
 console.log(pc.cyan("rehudex v0.2 — 输入 exit 或按 Ctrl+C 退出"));
-console.log(pc.dim("命令: /new 新会话 | /list 列出 | /load <id前8位> 加载"));
+console.log(
+  pc.dim("提示: / 命令(Tab 补全) | @文件 引用文件 | !cmd 直接执行 shell | /help 查看全部"),
+);
+
+const cmdCtx: CommandContext = {
+  history,
+  store,
+  systemMsg,
+  setStore(s) {
+    store = s;
+    cmdCtx.store = s;
+  },
+};
+
 while (!closed) {
   let input: string;
   try {
@@ -88,48 +104,39 @@ while (!closed) {
     break;
   }
 
-  if (input === "/new") {
-    store = SessionStore.create();
-    history.length = 0;
-    history.push(systemMsg);
-    store.append(systemMsg);
-    console.log(pc.cyan(`新会话 ${store.id.slice(0, 8)}`));
-    console.log(pc.dim(`session: ${store.file}`));
+  // ! 前缀:直接执行 shell,结果入 history
+  if (input.startsWith("!")) {
+    const cmd = input.slice(1).trim();
+    if (!cmd) continue;
+    console.log(pc.yellow(`⚙ ${CURRENT_SHELL} $ ${cmd}`));
+    const { stdout, stderr, error } = await runShell(cmd);
+    if (stdout) process.stdout.write(stdout.endsWith("\n") ? stdout : stdout + "\n");
+    if (stderr) process.stderr.write(pc.red(stderr.endsWith("\n") ? stderr : stderr + "\n"));
+    if (error) console.log(pc.red(`命令异常: ${error}`));
+    const summary =
+      `[用户在 shell 执行] ${cmd}\nstdout:\n${stdout}\nstderr:\n${stderr}` +
+      (error ? `\nerror:\n${error}` : "");
+    const msg: OpenAI.ChatCompletionMessageParam = { role: "user", content: summary };
+    history.push(msg);
+    store.append(msg);
     continue;
   }
 
-  if (input === "/list") {
-    const sessions = SessionStore.list();
-    if (sessions.length === 0) {
-      console.log(pc.dim("(无历史)"));
+  // / 前缀:走命令注册表
+  if (input.startsWith("/")) {
+    const [name, ...rest] = input.slice(1).split(/\s+/);
+    const cmd = getCommand(name);
+    if (!cmd) {
+      console.log(pc.red(`未知命令: /${name}`), pc.dim("输入 /help 查看可用命令"));
     } else {
-      for (const s of sessions) {
-        console.log(
-          `${pc.green(s.id.slice(0, 8))}  ${s.mtime.toLocaleString()}  ${pc.dim(s.preview)}`,
-        );
-      }
+      await cmd.run(rest.join(" "), cmdCtx);
     }
     continue;
   }
 
-  if (input.startsWith("/load ")) {
-    const id = input.slice(6).trim();
-    try {
-      const loaded = SessionStore.load(id);
-      store = loaded.store;
-      history.length = 0;
-      history.push(...loaded.messages);
-      console.log(
-        pc.cyan(`已加载 ${store.id.slice(0, 8)} (${history.length} 条)`),
-      );
-      renderHistory(history);
-    } catch (e: any) {
-      console.log(pc.red(e.message));
-    }
-    continue;
-  }
-
-  const { usage } = await agentRun(input, history, store);
+  // @ 文件引用展开后再丢给 LLM
+  const expanded = await expandAtRefs(input);
+  const { usage } = await agentRun(expanded, history, store);
   if (usage.total > 0) {
     sessionUsage.prompt += usage.prompt;
     sessionUsage.completion += usage.completion;
