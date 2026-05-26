@@ -1,4 +1,4 @@
-import { confirm } from "../confirm.js";
+import { approveShell } from "../approval.js";
 import { runShell, CURRENT_SHELL, shellSyntaxHint } from "../shellExec.js";
 import type { Tool } from "../types.js";
 
@@ -15,7 +15,7 @@ export const shell: Tool = {
     required: ["command"],
   },
   async execute({ command }) {
-    const ok = await confirm(`执行命令: ${command}?`);
+    const ok = await approveShell(command);
     if (!ok) return "用户取消了命令";
     const { stdout, stderr, error } = await runShell(command);
     if (error) return `命令失败: ${error}\nstdout:\n${stdout}\nstderr:\n${stderr}`;

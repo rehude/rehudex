@@ -2,11 +2,14 @@
 import "./proxy.js";
 import pc from "picocolors";
 import { agentRun } from "./agent.js";
-import { SYSTEM_PROMPT } from "./prompts.js";
+import { buildSystemPrompt } from "./prompts.js";
 import { registerTool } from "./tools/index.js";
 import { readFile } from "./tools/readFile.js";
 import { writeFile } from "./tools/writeFile.js";
 import { shell } from "./tools/shell.js";
+import { editFile } from "./tools/editFile.js";
+import { grep } from "./tools/grep.js";
+import { glob } from "./tools/glob.js";
 import { getRL, closeRL } from "./cli.js";
 import readline from "node:readline/promises";
 import { SessionStore } from "./session.js";
@@ -19,13 +22,16 @@ import type OpenAI from "openai";
 registerTool(readFile);
 registerTool(writeFile);
 registerTool(shell);
+registerTool(editFile);
+registerTool(grep);
+registerTool(glob);
 
 const rl = getRL(buildCompleter());
 
 const continueLast = process.argv.slice(2).includes("-c");
 const systemMsg: OpenAI.ChatCompletionMessageParam = {
   role: "system",
-  content: SYSTEM_PROMPT,
+  content: buildSystemPrompt(),
 };
 
 let store: SessionStore;
@@ -85,20 +91,36 @@ const cmdCtx: CommandContext = {
   history,
   store,
   systemMsg,
+  sessionUsage,
   setStore(s) {
     store = s;
     cmdCtx.store = s;
   },
 };
 
+function formatTok(n: number): string {
+  if (n <= 0) return "";
+  if (n < 1000) return `${n}`;
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}k`;
+  return `${(n / 1_000_000).toFixed(2)}M`;
+}
+
+function buildPrompt(): string {
+  const tag = formatTok(sessionUsage.total);
+  if (!tag) return pc.green("> ");
+  return `${pc.dim(`[${tag}]`)} ${pc.green(">")} `;
+}
+
 /**
  * 多行输入读取:行尾以 `\` 结尾就续行(去掉 `\`),否则把累积内容用 `\n` 连接后返回。
- * 续行 prompt 与首行一致(用户偏好保持 `> `)。
+ * 首行 prompt 带 token 用量标签,续行不带(避免视觉跳动)。
  */
 async function readUserInput(r: readline.Interface): Promise<string> {
   const parts: string[] = [];
+  let first = true;
   while (true) {
-    const line = await r.question(pc.green("> "));
+    const line = await r.question(first ? buildPrompt() : pc.green("> "));
+    first = false;
     if (line.endsWith("\\")) {
       parts.push(line.slice(0, -1));
       continue;

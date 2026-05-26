@@ -1,6 +1,6 @@
 import { writeFile as fsWrite } from "node:fs/promises";
 import { safePath } from "./safePath.js";
-import { confirm } from "../confirm.js";
+import { approveTool } from "../approval.js";
 import type { Tool } from "../types.js";
 
 export const writeFile: Tool = {
@@ -14,11 +14,11 @@ export const writeFile: Tool = {
     },
     required: ["path", "content"],
   },
-  async execute({ path: p, content }) {
-    const abs = safePath(p);
-    const ok = await confirm(`写入 ${abs}(${content.length} 字符)?`);
+  async execute(args: { path: string; content: string }) {
+    const abs = safePath(args.path);
+    const ok = await approveTool(writeFile, args, `写入 ${abs}(${args.content.length} 字符)?`);
     if (!ok) return "用户取消了写入";
-    await fsWrite(abs, content, "utf8");
+    await fsWrite(abs, args.content, "utf8");
     return `已写入 ${abs}`;
   },
 };

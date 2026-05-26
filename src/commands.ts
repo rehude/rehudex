@@ -2,15 +2,24 @@ import { writeFileSync, statSync } from "node:fs";
 import path from "node:path";
 import pc from "picocolors";
 import { SessionStore } from "./session.js";
-import { renderHistory } from "./render.js";
+import { renderHistory, createStreamRenderer } from "./render.js";
 import { copyToClipboard } from "./clipboard.js";
 import { editInExternal } from "./editor.js";
+import { chatStream, type Usage } from "./llm.js";
+import { formatApiError } from "./errors.js";
 import type OpenAI from "openai";
+
+export interface SessionUsage {
+  prompt: number;
+  completion: number;
+  total: number;
+}
 
 export interface CommandContext {
   history: OpenAI.ChatCompletionMessageParam[];
   store: SessionStore;
   systemMsg: OpenAI.ChatCompletionMessageParam;
+  sessionUsage: SessionUsage;
   setStore(s: SessionStore): void;
 }
 
@@ -294,3 +303,65 @@ registerCommand({
     }
   },
 });
+
+const COMPACT_PROMPT = `请把上面这段助手与用户的对话压缩为一段中文摘要,保留:
+- 已确认的事实、结论、决定
+- 已修改/创建的文件路径与关键代码定位
+- 用户的偏好与明确要求
+- 尚未完成或被搁置的事项
+丢弃寒暄、思考过程、工具的原始 stdout 与冗余信息。控制在 500 字以内,直接输出摘要正文,不要前后铺垫。`;
+
+registerCommand({
+  name: "compact",
+  description: "用 LLM 摘要当前上下文,压缩 history(JSONL 文件保留完整原始记录)",
+  async run(_args, ctx) {
+    if (ctx.history.length <= 1) {
+      console.log(pc.dim("(空对话,无需压缩)"));
+      return;
+    }
+    // 准备 LLM 输入:保留 systemMsg + 现有 history(除 system) + 摘要要求
+    const ask: OpenAI.ChatCompletionMessageParam = {
+      role: "user",
+      content: COMPACT_PROMPT,
+    };
+    const input = [...ctx.history, ask];
+
+    console.log(pc.cyan("[摘要]"));
+    const renderer = createStreamRenderer();
+    let total: Usage | null = null;
+    try {
+      const { message, usage } = await chatStream(input, undefined, (t) => renderer.write(t));
+      renderer.finish();
+      total = usage;
+      const summary =
+        typeof message.content === "string" ? message.content : "";
+      if (!summary.trim()) {
+        console.log(pc.yellow("(模型未返回摘要,放弃压缩)"));
+        return;
+      }
+      const before = ctx.history.length;
+      const summaryMsg: OpenAI.ChatCompletionMessageParam = {
+        role: "user",
+        content: `[历史摘要]\n${summary}`,
+      };
+      // 截断内存 history,JSONL 文件保留原始记录;摘要也 append 到 store
+      ctx.history.length = 0;
+      ctx.history.push(ctx.systemMsg, summaryMsg);
+      ctx.store.append(summaryMsg);
+      // 重置累计 usage(摘要后的新一轮 prompt_tokens 会重新计算)
+      ctx.sessionUsage.prompt = 0;
+      ctx.sessionUsage.completion = 0;
+      ctx.sessionUsage.total = 0;
+      console.log(
+        pc.cyan(
+          `已压缩:${before} 条 → 2 条;摘要 ${summary.length} 字符` +
+            (total ? `,本次摘要消耗 ${total.total} tokens` : ""),
+        ),
+      );
+    } catch (err) {
+      renderer.reset();
+      console.log(pc.red(`✖ 摘要失败: ${formatApiError(err)}`));
+    }
+  },
+});
+
