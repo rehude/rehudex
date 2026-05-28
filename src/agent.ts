@@ -6,6 +6,7 @@ import { formatApiError } from "./errors.js";
 import { SessionStore } from "./session.js";
 import pc from "picocolors";
 import type OpenAI from "openai";
+import type { UiAdapter } from "./ui/index.js";
 
 export interface AgentRunResult {
   usage: Usage;
@@ -16,6 +17,7 @@ export async function agentRun(
   userInput: string,
   history: OpenAI.ChatCompletionMessageParam[],
   store: SessionStore,
+  ui: UiAdapter,
 ): Promise<AgentRunResult> {
   const userMsg: OpenAI.ChatCompletionMessageParam = {
     role: "user",
@@ -35,19 +37,20 @@ export async function agentRun(
         toOpenAITools(),
         (t) => {
           if (state.phase !== "content") {
-            if (state.phase === "reasoning") process.stdout.write("\n");
-            process.stdout.write(pc.cyan("[回答]\n"));
+            if (state.phase === "reasoning") ui.emit({ type: "reasoningDone" });
+            ui.emit({ type: "assistantStart" });
             renderer.reset();
             state.phase = "content";
           }
           renderer.write(t);
+          ui.emit({ type: "assistantDelta", data: t });
         },
         (t) => {
           if (state.phase !== "reasoning") {
-            process.stdout.write(pc.dim("[思考] "));
+            ui.emit({ type: "reasoningStart" });
             state.phase = "reasoning";
           }
-          process.stdout.write(pc.dim(t));
+          ui.emit({ type: "reasoningDelta", data: t });
         },
       );
       if (state.phase === "content") renderer.finish();
@@ -63,14 +66,20 @@ export async function agentRun(
         return { usage: total };
       }
 
-      if (state.phase !== "none") process.stdout.write("\n");
+      if (state.phase !== "none") ui.emit({ type: "assistantDone" });
       for (const call of assistant.tool_calls) {
         if (call.type !== "function") continue;
         const tool = getTool(call.function.name);
         let result: string;
         try {
           const args = JSON.parse(call.function.arguments);
-          console.log(pc.yellow(`⚙ ${call.function.name}(${call.function.arguments})`));
+          ui.emit({
+            type: "toolCall",
+            data: {
+              name: call.function.name,
+              arguments: call.function.arguments,
+            },
+          });
           result = tool
             ? await tool.execute(args)
             : `Error: unknown tool ${call.function.name}`;
@@ -81,12 +90,12 @@ export async function agentRun(
         store.append({ role: "tool", tool_call_id: call.id, content: result });
       }
     }
-    console.log(pc.red(`已达最大迭代次数 ${CFG.maxIterations},强制中断`));
+    ui.emit({ type: "error", data: `已达最大迭代次数 ${CFG.maxIterations},强制中断` });
     return { usage: total };
   } catch (err) {
     renderer.reset();
     const msg = formatApiError(err);
-    console.log(pc.red(`\n✖ ${msg}`));
+    ui.emit({ type: "error", data: msg });
     return { usage: total, error: msg };
   }
 }

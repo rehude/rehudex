@@ -4,6 +4,7 @@ import pc from "picocolors";
 import { safePath } from "./tools/safePath.js";
 import { allCommands } from "./commands.js";
 import { listSkills } from "./skills.js";
+import { getCurrentUi } from "./ui/current.js";
 
 type CompleterResult = [string[], string];
 
@@ -69,6 +70,7 @@ export async function expandAtRefs(input: string): Promise<string> {
   if (refs.length === 0) return input;
   const blocks: string[] = [];
   const seen = new Set<string>();
+  const ui = getCurrentUi();
   for (const ref of refs) {
     if (seen.has(ref)) continue;
     seen.add(ref);
@@ -76,9 +78,9 @@ export async function expandAtRefs(input: string): Promise<string> {
       const abs = safePath(ref);
       const content = await fsRead(abs, "utf8");
       blocks.push(`--- 附件: ${ref} ---\n${content}\n--- 结束 ---`);
-      console.log(pc.dim(`[附加] ${ref} (${content.length} 字节)`));
+      ui.emit({ type: "info", data: pc.dim(`[附加] ${ref} (${content.length} 字节)`) });
     } catch (e: any) {
-      console.log(pc.yellow(`[跳过] @${ref}: ${e.message}`));
+      ui.emit({ type: "warning", data: `[跳过] @${ref}: ${e.message}` });
     }
   }
   if (blocks.length === 0) return input;

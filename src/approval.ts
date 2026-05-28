@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import pc from "picocolors";
 import { confirm } from "./confirm.js";
+import { getCurrentUi } from "./ui/current.js";
 import type { Tool } from "./types.js";
 
 export interface ApprovalPolicy {
@@ -88,7 +89,10 @@ export async function approveShell(command: string): Promise<boolean> {
   const policy = loadApproval();
   for (const re of policy.shellAllowlist) {
     if (re.test(command)) {
-      process.stdout.write(pc.dim(`[approval] 命中 allowlist /${re.source}/,自动放行\n`));
+      getCurrentUi().emit({
+        type: "info",
+        data: pc.dim(`[approval] 命中 allowlist /${re.source}/,自动放行`),
+      });
       return true;
     }
   }
