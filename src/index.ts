@@ -91,6 +91,9 @@ setCurrentUi(ui);
 // classic UI 复用 readline,Ink 自己接管 stdin 因此跳过 getRL
 const rl = effectiveUiType === "classic" ? getRL(buildCompleter()) : null;
 
+// 先启动 UI,确保 Ink App 已订阅事件总线后再 emit 初始状态和历史。
+await ui.start();
+
 const systemMsg: OpenAI.ChatCompletionMessageParam = {
   role: "system",
   content: buildSystemPrompt(),
@@ -128,7 +131,7 @@ ui.emit({ type: "status", data: `session: ${store.file}` });
 const sessionUsage = { prompt: 0, completion: 0, total: 0 };
 let closed = false;
 
-const shutdown = (code = 0) => {
+const shutdown = async (code = 0) => {
   if (closed) return;
   closed = true;
   if (sessionUsage.total > 0) {
@@ -138,22 +141,25 @@ const shutdown = (code = 0) => {
     });
   }
   ui.emit({ type: "info", data: "再见 👋" });
-  ui.stop();
+  await ui.stop();
   process.exit(code);
 };
 
 if (rl) {
-  rl.on("SIGINT", () => shutdown(0));
+  rl.on("SIGINT", () => void shutdown(0));
   rl.on("close", () => {
-    if (!closed) shutdown(0);
+    if (!closed) void shutdown(0);
   });
 } else {
   // Ink 模式:用 process 信号兜底
-  process.on("SIGINT", () => shutdown(0));
+  process.on("SIGINT", () => void shutdown(0));
 }
 
-console.log(pc.cyan("rehudex v0.4 — 输入 exit 或按 Ctrl+C 退出"));
-console.log(pc.dim(`UI: ${effectiveUiType} | 提示: / 命令(Tab 补全) | @文件 引用 | !cmd 直接 shell | 行尾 \\ 续行 | /edit 长输入 | /help 查看全部`));
+ui.emit({ type: "info", data: "rehudex v0.4 — 输入 exit 或按 Ctrl+C 退出" });
+ui.emit({
+  type: "info",
+  data: `UI: ${effectiveUiType} | 提示: / 命令(Tab 补全) | @文件 引用 | !cmd 直接 shell | 行尾 \\ 续行 | /edit 长输入 | /help 查看全部`,
+});
 
 const cmdCtx: CommandContext = {
   history,
@@ -166,9 +172,6 @@ const cmdCtx: CommandContext = {
     cmdCtx.store = s;
   },
 };
-
-// 初始化 UI
-await ui.start();
 
 function formatTok(n: number): string {
   if (n <= 0) return "";
@@ -194,6 +197,7 @@ async function readUserInput(): Promise<string> {
  * 把一段文本当成本轮 user 输入:走 @ 展开 + agentRun + sessionUsage 累加。
  */
 async function processMessage(text: string): Promise<void> {
+  ui.emit({ type: "userMessage", data: text });
   const expanded = await expandAtRefs(text);
   const { usage } = await agentRun(expanded, history, store, ui);
   if (usage.total > 0) {
@@ -217,7 +221,7 @@ while (!closed) {
   if (closed) break;
   if (!input) continue;
   if (input === "exit") {
-    shutdown(0);
+    await shutdown(0);
     break;
   }
 

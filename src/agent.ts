@@ -64,7 +64,12 @@ export async function agentRun(
           ui.emit({ type: "reasoningDelta", data: t });
         },
       );
-      if (state.phase === "content") renderer.finish();
+      if (state.phase === "content") {
+        renderer.finish();
+        ui.emit({ type: "assistantDone" });
+      } else if (state.phase === "reasoning") {
+        ui.emit({ type: "reasoningDone" });
+      }
       if (usage) {
         total.prompt += usage.prompt;
         total.completion += usage.completion;
@@ -77,7 +82,6 @@ export async function agentRun(
         return { usage: total };
       }
 
-      if (state.phase !== "none") ui.emit({ type: "assistantDone" });
       for (const call of assistant.tool_calls) {
         if (call.type !== "function") continue;
         const tool = getTool(call.function.name);

@@ -1,6 +1,5 @@
 import { readdirSync } from "node:fs";
 import { readFile as fsRead } from "node:fs/promises";
-import pc from "picocolors";
 import { safePath } from "./tools/safePath.js";
 import { allCommands } from "./commands.js";
 import { listSkills } from "./skills.js";
@@ -78,7 +77,7 @@ export async function expandAtRefs(input: string): Promise<string> {
       const abs = safePath(ref);
       const content = await fsRead(abs, "utf8");
       blocks.push(`--- 附件: ${ref} ---\n${content}\n--- 结束 ---`);
-      ui.emit({ type: "info", data: pc.dim(`[附加] ${ref} (${content.length} 字节)`) });
+      ui.emit({ type: "info", data: `[附加] ${ref} (${content.length} 字节)` });
     } catch (e: any) {
       ui.emit({ type: "warning", data: `[跳过] @${ref}: ${e.message}` });
     }
