@@ -18,16 +18,23 @@ import { getCommand, type CommandContext } from "./commands.js";
 import { buildCompleter, expandAtRefs } from "./completer.js";
 import { runShell, CURRENT_SHELL } from "./shellExec.js";
 import { CFG } from "./config.js";
+import { loadApproval, setApprovalOverrides } from "./approval.js";
 import { createUiAdapter, type UiType } from "./ui/index.js";
 import { setCurrentUi } from "./ui/current.js";
 import type OpenAI from "openai";
 
 // 解析命令行参数
-function parseArgs(argv: string[]): { uiType: UiType; continueLast: boolean; help: boolean } {
+function parseArgs(argv: string[]): {
+  uiType: UiType;
+  continueLast: boolean;
+  help: boolean;
+  yolo?: boolean;
+} {
   const args = argv.slice(2);
   let uiType: UiType = "ink";
   let continueLast = false;
   let help = false;
+  let yolo: boolean | undefined;
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
@@ -42,12 +49,16 @@ function parseArgs(argv: string[]): { uiType: UiType; continueLast: boolean; hel
         console.error(`   支持的值: classic, ink`);
         process.exit(1);
       }
-    } else if (arg === "-c") {
+    } else if (arg === "-c" || arg === "--continue") {
       continueLast = true;
+    } else if (arg === "--yolo") {
+      yolo = true;
+    } else if (arg === "--no-yolo") {
+      yolo = false;
     }
   }
 
-  return { uiType, continueLast, help };
+  return { uiType, continueLast, help, yolo };
 }
 
 function showHelp(): void {
@@ -59,20 +70,27 @@ function showHelp(): void {
   console.log("选项:");
   console.log(`  -c, --continue       续接最后一个会话`);
   console.log(`  --ui <type>          选择 UI (ink|classic, 默认 ink)`);
+  console.log(`  --yolo               跳过 shell/写文件/编辑确认`);
+  console.log(`  --no-yolo            禁用配置或环境变量中的 YOLO 模式`);
   console.log(`  -h, --help           显示本帮助`);
   console.log("");
   console.log("示例:");
   console.log(`  rehudex              启动新会话，使用 Ink UI`);
   console.log(`  rehudex -c           续接会话，使用 Ink UI`);
   console.log(`  rehudex --ui classic 启动新会话，使用 classic 兼容模式`);
+  console.log(`  rehudex --yolo       启动后自动放行副作用工具`);
+  console.log(`  运行中按 Ctrl+Y     切换 YOLO 模式`);
 }
 
-const { uiType, continueLast, help } = parseArgs(process.argv);
+const { uiType, continueLast, help, yolo } = parseArgs(process.argv);
+if (yolo !== undefined) setApprovalOverrides({ yolo });
 
 if (help) {
   showHelp();
   process.exit(0);
 }
+
+let approvalPolicy = loadApproval();
 
 registerTool(readFile);
 registerTool(writeFile);
@@ -98,7 +116,7 @@ await ui.start();
 
 const systemMsg: OpenAI.ChatCompletionMessageParam = {
   role: "system",
-  content: buildSystemPrompt(),
+  content: buildSystemPrompt(process.cwd(), approvalPolicy.yolo),
 };
 
 let store: SessionStore;
@@ -158,9 +176,32 @@ function emitStatus(): void {
       ` | tokens ${formatTok(sessionUsage.total) || "0"}` +
       ` | cwd ${shortCwd()}` +
       ` | model ${CFG.model}` +
-      ` | endpoint ${endpointLabel()}`,
+      ` | endpoint ${endpointLabel()}` +
+      (approvalPolicy.yolo ? " | approval YOLO" : ""),
   });
 }
+
+function refreshSystemPrompt(): void {
+  systemMsg.content = buildSystemPrompt(process.cwd(), approvalPolicy.yolo);
+  if (history[0]?.role === "system") {
+    history[0] = systemMsg;
+  }
+}
+
+function setYoloMode(enabled: boolean): void {
+  setApprovalOverrides({ yolo: enabled });
+  approvalPolicy = loadApproval();
+  refreshSystemPrompt();
+  emitStatus();
+}
+
+function toggleYoloMode(): void {
+  setYoloMode(!approvalPolicy.yolo);
+}
+
+ui.setShortcutHandler?.((shortcut) => {
+  if (shortcut === "toggleYolo") toggleYoloMode();
+});
 
 emitStatus();
 
@@ -191,7 +232,10 @@ if (rl) {
 ui.emit({ type: "info", data: "rehudex v0.4 — 输入 exit 或按 Ctrl+C 退出" });
 ui.emit({
   type: "info",
-  data: `UI: ${effectiveUiType} | 提示: / 命令(Tab 补全) | @文件 引用 | !cmd 直接 shell | 行尾 \\ 续行 | /edit 长输入 | /help 查看全部`,
+  data:
+    `UI: ${effectiveUiType}` +
+    (approvalPolicy.yolo ? " | YOLO" : "") +
+    ` | 提示: Ctrl+Y 切换 YOLO | / 命令(Tab 补全) | @文件 引用 | !cmd 直接 shell | 行尾 \\ 续行 | /edit 长输入 | /help 查看全部`,
 });
 
 const cmdCtx: CommandContext = {

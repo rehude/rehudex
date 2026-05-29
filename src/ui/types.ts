@@ -19,6 +19,8 @@ export type UiEventType =
   | "shellOutput"
   | "shellDone";
 
+export type UiShortcut = "toggleYolo";
+
 export interface UiEvent {
   type: UiEventType;
   data?: any;
@@ -127,6 +129,9 @@ export interface UiAdapter {
 
   // 发送 UI 事件
   emit(event: UiEvent): void;
+
+  // 可选:监听 UI 层捕获到的全局快捷键
+  setShortcutHandler?(handler: ((shortcut: UiShortcut) => void) | null): void;
 
   // 渲染历史消息（例如 /load 后重新显示）
   renderHistory(messages: OpenAI.ChatCompletionMessageParam[]): void;

@@ -182,6 +182,11 @@ export function App(): React.ReactElement {
 
   // 输入处理
   useInput((input, key) => {
+    if (key.ctrl && input === "y") {
+      bus.emit("shortcut", "toggleYolo");
+      return;
+    }
+
     if (key.ctrl && input === "c") {
       if (pendingConfirm) {
         const p = pendingConfirm;

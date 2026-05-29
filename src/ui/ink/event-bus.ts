@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { UiEvent } from "../types.js";
+import type { UiEvent, UiShortcut } from "../types.js";
 import type OpenAI from "openai";
 
 /**
@@ -13,10 +13,17 @@ export interface InkBus extends EventEmitter {
   emit(event: "history", payload: OpenAI.ChatCompletionMessageParam[]): boolean;
   emit(event: "askInput", payload: { prompt: string; resolve: (value: string) => void }): boolean;
   emit(event: "askConfirm", payload: { msg: string; resolve: (value: boolean) => void }): boolean;
+  emit(event: "shortcut", payload: UiShortcut): boolean;
   on(event: "ui", listener: (payload: UiEvent) => void): this;
   on(event: "history", listener: (payload: OpenAI.ChatCompletionMessageParam[]) => void): this;
   on(event: "askInput", listener: (payload: { prompt: string; resolve: (value: string) => void }) => void): this;
   on(event: "askConfirm", listener: (payload: { msg: string; resolve: (value: boolean) => void }) => void): this;
+  on(event: "shortcut", listener: (payload: UiShortcut) => void): this;
+  off(event: "ui", listener: (payload: UiEvent) => void): this;
+  off(event: "history", listener: (payload: OpenAI.ChatCompletionMessageParam[]) => void): this;
+  off(event: "askInput", listener: (payload: { prompt: string; resolve: (value: string) => void }) => void): this;
+  off(event: "askConfirm", listener: (payload: { msg: string; resolve: (value: boolean) => void }) => void): this;
+  off(event: "shortcut", listener: (payload: UiShortcut) => void): this;
 }
 
 let bus: InkBus | null = null;

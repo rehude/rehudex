@@ -6,7 +6,7 @@ const BASE_PROMPT = `你是 easyAgent,一个运行在用户终端的命令行助
 原则:
 - 工具调用前先简短说明意图
 - 路径相对于用户当前工作目录
-- 执行有副作用的操作(写文件/编辑/shell)时,用户会被询问确认
+- 执行有副作用的操作(写文件/编辑/shell)时,默认会询问确认
 - 修改文件优先用 edit_file 的 SEARCH/REPLACE 格式(精确替换,无需大段重写)
 - 搜索代码优先用 grep / glob,避免靠 read_file 全文搜索
 - 回复用中文,简洁直接`;
@@ -29,8 +29,13 @@ function readProjectFile(cwd: string, name: string): string | null {
   }
 }
 
-export function buildSystemPrompt(cwd: string = process.cwd()): string {
-  const sections: string[] = [BASE_PROMPT];
+export function buildSystemPrompt(cwd: string = process.cwd(), yolo = false): string {
+  const sections: string[] = [
+    BASE_PROMPT,
+    yolo
+      ? "当前处于 YOLO 模式:副作用操作不会再弹出确认,请直接执行必要步骤并保持谨慎。"
+      : "",
+  ].filter(Boolean);
   for (const name of PROJECT_FILES) {
     const text = readProjectFile(cwd, name);
     if (text) {
