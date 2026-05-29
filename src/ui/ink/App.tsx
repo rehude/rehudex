@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Box, Text, useInput, useApp } from "ink";
-import { renderToAnsi } from "md4x";
 import type OpenAI from "openai";
 import type { UiEvent } from "../types.js";
 import { getInkBus } from "./event-bus.js";
 import { buildCompleter } from "../../completer.js";
 import {
   type MessageBlock,
+  MarkdownView,
   newBlockId,
   messagesToBlocks,
   MessageBlockView,
@@ -296,7 +296,7 @@ export function App(): React.ReactElement {
       {streaming ? (
         <Box flexDirection="column" marginTop={1} borderStyle="round" borderColor="cyan" paddingX={1}>
           <Text color="cyan">[回答]</Text>
-          <Text>{renderToAnsi(streaming)}</Text>
+          <MarkdownView text={streaming} />
         </Box>
       ) : null}
 

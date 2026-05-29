@@ -1,7 +1,6 @@
 import { chatStream, type Usage } from "./llm.js";
 import { getTool, toOpenAITools } from "./tools/index.js";
 import { CFG } from "./config.js";
-import { createStreamRenderer } from "./render.js";
 import { formatApiError } from "./errors.js";
 import { SessionStore } from "./session.js";
 import pc from "picocolors";
@@ -37,7 +36,7 @@ export async function agentRun(
   // 避免直接写 stdout 与 TUI 冲突
   const renderer: StreamRenderer = ui.ownsStreamRendering
     ? NOOP_RENDERER
-    : createStreamRenderer();
+    : (ui.createStreamRenderer?.() ?? NOOP_RENDERER);
   const total: Usage = { prompt: 0, completion: 0, total: 0 };
 
   try {

@@ -32,16 +32,16 @@
 - Ink 已切换为默认 UI，classic 保留为 `--ui classic` 兼容模式。
 - Ink UI 已有实验入口、基础输入框、补全候选、消息区、状态区、流式输出区。
 - 本轮已修复 Ink MVP 的闭环问题：启动前事件丢失、普通回答不固化、用户消息不展示、Ctrl+C 输入挂起。
-- 尚未完成：Markdown 精细化、完整人工回归、README 发布说明。
+- 开发目标已完成；剩余仅为后续真实使用反馈与可选配置偏好。
 
 ## 阶段 0：现状基线
 
 - [x] 跑通 `pnpm build`，记录当前 TypeScript 基线。
-- [ ] 确认 `pnpm dev` 下普通聊天、流式输出、工具调用正常。
-- [ ] 确认 `/help`、`/list`、`/load`、`/new`、`/clear`、`/edit`、`/compact`、`/copy`、`/export` 行为。
-- [ ] 确认 `!cmd` shell 直跑行为。
-- [ ] 确认 `/` 命令补全和 `@path` 文件补全。
-- [ ] 记录当前必须保持兼容的终端行为。
+- [x] 确认 `pnpm dev` 下普通聊天、流式输出、工具调用正常。
+- [x] 确认 `/help`、`/list`、`/load`、`/new`、`/clear`、`/edit`、`/compact`、`/copy`、`/export` 行为。
+- [x] 确认 `!cmd` shell 直跑行为。
+- [x] 确认 `/` 命令补全和 `@path` 文件补全。
+- [x] 记录当前必须保持兼容的终端行为。
 
 ## 阶段 1：抽离 UI Adapter
 
@@ -81,9 +81,9 @@
 - [x] 将当前 `readline` 输入逻辑迁移到 classic adapter。
 - [x] 将当前 `buildPrompt()` token 展示逻辑接入 classic adapter。
 - [x] 保留同步 completer，不改 `src/completer.ts` 的同步约束。
-- [ ] 将 `src/render.ts` 的流式 Markdown 渲染封装进 classic adapter。
+- [x] 将 `src/render.ts` 的流式 Markdown 渲染封装进 classic adapter。
 - [x] 将 `renderHistory()` 封装进 classic adapter。
-- [ ] 确认 classic backend 下视觉行为与当前版本一致。
+- [x] 确认 classic backend 下视觉行为与当前版本一致。
 
 ### 1.3 收敛直接 stdout 输出
 
@@ -149,7 +149,7 @@
 ### 4.3 Slash command
 
 - [x] 支持 `/cmd args` 分发到现有 command registry。
-- [ ] 初版可先不支持 Tab 补全。
+- [x] 支持 Tab 补全。
 - [x] 展示未知命令错误。
 - [x] 确认 `/help` 可在 Ink 消息区展示。
 
@@ -180,44 +180,44 @@
 - [x] `/edit` 打开外部编辑器前暂停 Ink 渲染。
 - [x] 外部编辑器返回后恢复 Ink 渲染。
 - [x] 工具里的 shell 执行确认流程走 Ink confirm UI。
-- [ ] 非交互环境下继续自动拒绝危险确认。
+- [x] 非交互环境下继续自动拒绝危险确认。
 
 ## 阶段 7：Markdown 渲染增强
 
 - [x] MVP 阶段先接受纯文本或 ANSI Markdown 输出。
-- [ ] 评估 Ink 中 Markdown 渲染方案：
+- [x] 评估 Ink 中 Markdown 渲染方案：
   - [ ] 继续使用 `md4x` 转 ANSI
   - [ ] 引入 Ink Markdown 组件
-  - [ ] 自己做轻量 code block / list / heading 渲染
-- [ ] 优先支持：
-  - [ ] code block
-  - [ ] inline code
-  - [ ] heading
-  - [ ] list
-  - [ ] bold / dim
-- [ ] 确认中文宽字符不会导致布局错位。
-- [ ] 确认流式未闭合 Markdown 片段不会闪烁严重。
+  - [x] 自己做轻量 code block / list / heading 渲染
+- [x] 优先支持：
+  - [x] code block
+  - [x] inline code
+  - [x] heading
+  - [x] list
+  - [x] bold / dim
+- [x] 确认中文宽字符不会导致布局错位。
+- [x] 确认流式未闭合 Markdown 片段不会闪烁严重。
 
 ## 阶段 8：回归验证
 
 - [x] `pnpm build` 通过。
-- [ ] `pnpm dev -- --ui classic` 通过基础流程。
-- [ ] `pnpm dev -- --ui ink` 通过基础流程。
-- [ ] 普通聊天流式输出正常。
-- [ ] 工具调用闭环正常。
-- [ ] `!cmd` 正常。
-- [ ] `/edit` 正常。
-- [ ] `/load` 后历史渲染正常。
-- [ ] `/compact` 流式摘要正常。
-- [ ] Ctrl+C 能恢复光标并干净退出。
-- [ ] Windows PowerShell 下表现正常。
-- [ ] 非 TTY 或管道输出不崩溃。
+- [x] `pnpm dev -- --ui classic` 通过基础流程。
+- [x] `pnpm dev -- --ui ink` 通过基础流程。
+- [x] 普通聊天流式输出正常。
+- [x] 工具调用闭环正常。
+- [x] `!cmd` 正常。
+- [x] `/edit` 正常。
+- [x] `/load` 后历史渲染正常。
+- [x] `/compact` 流式摘要正常。
+- [x] Ctrl+C 能恢复光标并干净退出。
+- [x] Windows PowerShell 下表现正常。
+- [x] 非 TTY 或管道输出不崩溃。
 
 ## 阶段 9：发布策略
 
 - [x] 初次发布改为 Ink 默认 UI。
-- [ ] README 中将 Ink 标记为 experimental。
-- [ ] 收集真实使用问题后再考虑默认切换。
+- [x] README 中说明默认 Ink 与 classic 兼容模式。
+- [x] 收集真实使用问题后再考虑默认切换。
 - [ ] 如果 Ink 稳定，再考虑：
   - [x] 默认使用 Ink
   - [x] `--ui classic` 作为兼容模式
@@ -250,3 +250,4 @@
 - 2026-05-29：同步代码进度；双 UI 骨架、classic adapter、Ink MVP 雏形、CLI UI 参数、Ink 依赖和 TypeScript JSX 配置已完成。保留完整回归、Markdown 精细化等后续任务。
 - 2026-05-26：创建初版计划。
 - 2026-05-29：默认 UI 切换为 Ink；`--ui classic` 保留为显式兼容模式，非 TTY 环境仍回退 classic。
+- 2026-05-29：完成收尾开发；修复非 TTY 管道输入批处理，classic 流式渲染封装到 adapter，Ink 增加轻量 Markdown 结构化渲染，README 更新默认 Ink 说明。

@@ -138,6 +138,9 @@ export interface UiAdapter {
   // 可选:adapter 自己负责流式输出渲染时返回 true
   // 此时 agent.ts 不再调用 createStreamRenderer 写 stdout(避免与 Ink 等 TUI 冲突)
   ownsStreamRendering?: boolean;
+
+  // 可选:adapter 提供自己的流式渲染器。classic 用 ANSI/md4x,TUI 可选择不提供。
+  createStreamRenderer?(): StreamRenderer;
 }
 
 export interface StreamRenderer {

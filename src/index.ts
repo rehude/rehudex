@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import "./proxy.js";
 import pc from "picocolors";
+import { readFileSync } from "node:fs";
 import { agentRun } from "./agent.js";
 import { buildSystemPrompt } from "./prompts.js";
 import { registerTool } from "./tools/index.js";
@@ -129,6 +130,11 @@ if (continueLast) {
 }
 const sessionUsage = { prompt: 0, completion: 0, total: 0 };
 let closed = false;
+const stdinQueue = !process.stdin.isTTY
+  ? readFileSync(0, "utf8")
+      .split(/\r?\n/)
+      .filter((line, index, lines) => line.length > 0 || index < lines.length - 1)
+  : null;
 
 function shortCwd(): string {
   const cwd = process.cwd();
@@ -175,7 +181,7 @@ const shutdown = async (code = 0) => {
 if (rl) {
   rl.on("SIGINT", () => void shutdown(0));
   rl.on("close", () => {
-    if (!closed) void shutdown(0);
+    if (!closed && process.stdin.isTTY) void shutdown(0);
   });
 } else {
   // Ink 模式:用 process 信号兜底
@@ -218,6 +224,20 @@ function buildPrompt(): string {
  * 多行输入读取:行尾以 `\` 结尾就续行(去掉 `\`),否则把累积内容用 `\n` 连接后返回。
  */
 async function readUserInput(): Promise<string> {
+  if (stdinQueue) {
+    if (stdinQueue.length === 0) throw new Error("Input ended");
+    const parts: string[] = [];
+    while (stdinQueue.length > 0) {
+      const line = stdinQueue.shift() ?? "";
+      if (line.endsWith("\\")) {
+        parts.push(line.slice(0, -1));
+        continue;
+      }
+      parts.push(line);
+      return parts.join("\n");
+    }
+    throw new Error("Input ended");
+  }
   return ui.readInput(buildPrompt);
 }
 
@@ -295,4 +315,8 @@ while (!closed) {
 
   // 其余:@ 文件引用展开后丢给 LLM
   await processMessage(input);
+}
+
+if (!closed) {
+  await shutdown(0);
 }

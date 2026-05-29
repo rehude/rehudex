@@ -1,9 +1,9 @@
 import pc from "picocolors";
 import readline from "node:readline/promises";
-import { renderHistory } from "../render.js";
+import { createStreamRenderer, renderHistory } from "../render.js";
 import { getRL, closeRL } from "../cli.js";
 import type OpenAI from "openai";
-import type { UiAdapter, UiEvent } from "./types.js";
+import type { StreamRenderer, UiAdapter, UiEvent } from "./types.js";
 
 export class ClassicAdapter implements UiAdapter {
   private rl: readline.Interface | null = null;
@@ -116,6 +116,10 @@ export class ClassicAdapter implements UiAdapter {
 
   renderHistory(messages: OpenAI.ChatCompletionMessageParam[]): void {
     renderHistory(messages);
+  }
+
+  createStreamRenderer(): StreamRenderer {
+    return createStreamRenderer();
   }
 
   async suspend(): Promise<void> {

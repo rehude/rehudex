@@ -72,13 +72,26 @@ LLM_MODEL=deepseek-chat
 ## 启动
 
 ```bash
-rehudex           # 在当前目录新建一个空白会话
-rehudex -c        # 续接本目录最近一次会话
+rehudex                 # 在当前目录新建一个空白会话,默认使用 Ink UI
+rehudex -c              # 续接本目录最近一次会话,默认使用 Ink UI
+rehudex --ui classic    # 使用 classic 兼容模式
 ```
 
 进入交互式 REPL,在 `>` 提示符后输入问题。`exit` 或 `Ctrl+C` 退出。
 
 > 工具的读写范围与会话池都按 `rehudex` 启动时所在目录(cwd)隔离,**建议在项目根目录启动**。
+
+## 终端 UI
+
+默认 UI 是 Ink:
+
+- 顶部状态栏显示 session、累计 tokens、cwd、model、endpoint 与 busy/idle 状态。
+- 输入框支持 `/` 命令候选与 `@path` 文件候选。
+- `Tab` 接受候选,`↑` / `↓` 选择候选,`Esc` 关闭候选。
+- `!cmd` 执行时会进入 shell busy 状态,结束后把 stdout/stderr 作为 shell 消息块展示。
+- Markdown 在 Ink 中按标题、列表、代码块、inline code、粗体等基础结构渲染。
+
+`--ui classic` 保留为兼容模式,也会在非 TTY / 管道输入场景自动使用。
 
 ## 会话管理
 
@@ -104,6 +117,8 @@ REPL 内置命令:
 | 参数 | 说明 |
 |---|---|
 | `-c` | 续接本项目最近一次会话,无历史则自动新建 |
+| `--ui ink` | 使用 Ink UI(默认) |
+| `--ui classic` | 使用 classic 兼容模式 |
 
 ## 内置工具
 

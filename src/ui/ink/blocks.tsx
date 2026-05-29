@@ -1,6 +1,5 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { renderToAnsi } from "md4x";
 import type OpenAI from "openai";
 
 export interface MessageBlock {
@@ -12,6 +11,111 @@ export interface MessageBlock {
 
 let blockCounter = 0;
 export const newBlockId = (): string => `b${++blockCounter}`;
+
+function InlineMarkdown({ text }: { text: string }): React.ReactElement {
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter((part) => part.length > 0);
+  return (
+    <Text>
+      {parts.map((part, index) => {
+        if (part.startsWith("`") && part.endsWith("`")) {
+          return (
+            <Text key={index} color="yellow">
+              {part.slice(1, -1)}
+            </Text>
+          );
+        }
+        if (part.startsWith("**") && part.endsWith("**")) {
+          return (
+            <Text key={index} bold>
+              {part.slice(2, -2)}
+            </Text>
+          );
+        }
+        return <Text key={index}>{part}</Text>;
+      })}
+    </Text>
+  );
+}
+
+export function MarkdownView({ text }: { text: string }): React.ReactElement {
+  const lines = text.split(/\r?\n/);
+  const nodes: React.ReactElement[] = [];
+  let inCode = false;
+  let codeLines: string[] = [];
+
+  const flushCode = () => {
+    if (codeLines.length === 0) return;
+    nodes.push(
+      <Box key={`code-${nodes.length}`} flexDirection="column" marginY={1} paddingX={1} borderStyle="single" borderColor="gray">
+        {codeLines.map((line, index) => (
+          <Text key={index} color="gray">
+            {line || " "}
+          </Text>
+        ))}
+      </Box>,
+    );
+    codeLines = [];
+  };
+
+  for (const line of lines) {
+    if (line.trim().startsWith("```")) {
+      if (inCode) {
+        flushCode();
+        inCode = false;
+      } else {
+        inCode = true;
+      }
+      continue;
+    }
+
+    if (inCode) {
+      codeLines.push(line);
+      continue;
+    }
+
+    const heading = line.match(/^(#{1,6})\s+(.+)$/);
+    if (heading) {
+      nodes.push(
+        <Text key={`h-${nodes.length}`} color="cyan" bold>
+          {heading[2]}
+        </Text>,
+      );
+      continue;
+    }
+
+    const bullet = line.match(/^(\s*)[-*]\s+(.+)$/);
+    if (bullet) {
+      nodes.push(
+        <Text key={`li-${nodes.length}`}>
+          <Text color="gray">  - </Text>
+          <InlineMarkdown text={bullet[2]} />
+        </Text>,
+      );
+      continue;
+    }
+
+    const ordered = line.match(/^(\s*)\d+\.\s+(.+)$/);
+    if (ordered) {
+      nodes.push(
+        <Text key={`ol-${nodes.length}`}>
+          <Text color="gray">  • </Text>
+          <InlineMarkdown text={ordered[2]} />
+        </Text>,
+      );
+      continue;
+    }
+
+    if (line.trim() === "") {
+      nodes.push(<Text key={`blank-${nodes.length}`}> </Text>);
+      continue;
+    }
+
+    nodes.push(<InlineMarkdown key={`p-${nodes.length}`} text={line} />);
+  }
+
+  if (inCode) flushCode();
+  return <Box flexDirection="column">{nodes}</Box>;
+}
 
 export function messagesToBlocks(
   messages: OpenAI.ChatCompletionMessageParam[],
@@ -69,7 +173,7 @@ export function MessageBlockView({ b }: { b: MessageBlock }): React.ReactElement
     return (
       <Box flexDirection="column" marginTop={1}>
         <Text color="cyan">[回答]</Text>
-        <Text>{renderToAnsi(b.text)}</Text>
+        <MarkdownView text={b.text} />
       </Box>
     );
   }
