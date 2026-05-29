@@ -1,6 +1,6 @@
 {
   "name": "rehudex",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "终端 AI 助手 + 工具调用闭环,对接任意兼容 OpenAI SDK 的 LLM endpoint。流式输出、Markdown 渲染、会话持久化。",
   "keywords": [
     "ai",
