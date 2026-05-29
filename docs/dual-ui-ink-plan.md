@@ -30,7 +30,7 @@
 - 当前代码已搭好 classic + Ink 双 UI 骨架。
 - `pnpm build` 已通过。
 - Ink 已切换为默认 UI，classic 保留为 `--ui classic` 兼容模式。
-- Ink UI 已有实验入口、基础输入框、补全候选、消息区、状态区、流式输出区。
+- Ink UI 已作为默认入口，具备基础输入框、补全候选、消息区、状态区、流式输出区。
 - 本轮已修复 Ink MVP 的闭环问题：启动前事件丢失、普通回答不固化、用户消息不展示、Ctrl+C 输入挂起。
 - 开发目标已完成；剩余仅为后续真实使用反馈与可选配置偏好。
 
@@ -186,8 +186,6 @@
 
 - [x] MVP 阶段先接受纯文本或 ANSI Markdown 输出。
 - [x] 评估 Ink 中 Markdown 渲染方案：
-  - [ ] 继续使用 `md4x` 转 ANSI
-  - [ ] 引入 Ink Markdown 组件
   - [x] 自己做轻量 code block / list / heading 渲染
 - [x] 优先支持：
   - [x] code block
@@ -218,10 +216,14 @@
 - [x] 初次发布改为 Ink 默认 UI。
 - [x] README 中说明默认 Ink 与 classic 兼容模式。
 - [x] 收集真实使用问题后再考虑默认切换。
-- [ ] 如果 Ink 稳定，再考虑：
+- [x] 如果 Ink 稳定，再考虑：
   - [x] 默认使用 Ink
   - [x] `--ui classic` 作为兼容模式
-  - [ ] 配置文件中持久化 UI 偏好
+
+## 后续可选项
+
+- 配置文件中持久化 UI 偏好。
+- 如轻量 Markdown 渲染不够，再评估第三方 Ink Markdown 组件。
 
 ## 关键风险
 
@@ -238,7 +240,7 @@
 2. `refactor: route agent output through ui adapter`
 3. `refactor: route commands through ui adapter`
 4. `cli: add ui selection flag`
-5. `ui: add experimental ink shell`
+5. `ui: add ink shell state`
 6. `ui: implement ink input and message stream`
 7. `ui: add ink completions and suspend handling`
 8. `ui: polish markdown and regression fixes`

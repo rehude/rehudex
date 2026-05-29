@@ -150,13 +150,19 @@ REPL 内置命令:
 src/
 ├── index.ts        # REPL 入口 + 启动参数 / 斜杠命令分发
 ├── agent.ts        # 多轮 tool_call Agent 主循环
+├── commands.ts     # Slash command 注册表
+├── completer.ts    # / 命令与 @path 补全 / 附件展开
 ├── llm.ts          # OpenAI SDK 封装(指向任意兼容 endpoint)
 ├── session.ts      # 会话持久化(JSONL append-only)
-├── render.ts       # 流式 Markdown 终端渲染
+├── render.ts       # classic UI 的流式 Markdown 终端渲染
 ├── prompts.ts      # 系统提示词
 ├── config.ts       # 环境变量配置
 ├── confirm.ts      # 阻塞式 y/N 确认
 ├── errors.ts       # API 错误中文化
+├── ui/
+│   ├── types.ts        # UI adapter 接口与事件类型
+│   ├── classic.ts      # classic 兼容 UI
+│   └── ink/            # 默认 Ink TUI
 └── tools/
     ├── index.ts        # 工具注册表
     ├── safePath.ts     # 路径越界保护
