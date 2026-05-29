@@ -7,7 +7,7 @@ export { CURRENT_SHELL };
 export const shell: Tool = {
   name: "execute_shell",
   description:
-    `在 cwd 下执行 shell 命令并返回 stdout/stderr。涉及副作用,需用户确认。\n` +
+    `在 cwd 下执行 shell 命令并返回 stdout/stderr。涉及副作用,默认需用户确认;YOLO 模式下自动放行。\n` +
     `当前 shell:${CURRENT_SHELL}。${shellSyntaxHint(CURRENT_SHELL)}`,
   parameters: {
     type: "object",

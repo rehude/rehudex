@@ -129,7 +129,7 @@ registerCommand({
       lines.push(`  ${head}${c.description}`);
     }
     lines.push("");
-    lines.push("提示: 输入 / 后按 Tab 可补全命令名;输入 @ 后按 Tab 可补全文件路径;以 ! 开头直接执行 shell;行尾打 \\ 回车可多行续写。");
+    lines.push("提示: Ctrl+Y 切换 YOLO;输入 / 后按 Tab 可补全命令名;输入 @ 后按 Tab 可补全文件路径;以 ! 开头直接执行 shell;行尾打 \\ 回车可多行续写。");
     ctx.ui.emit({ type: "info", data: lines.join("\n") });
   },
 });

@@ -1,24 +1,37 @@
 import pc from "picocolors";
 import readline from "node:readline/promises";
+import { emitKeypressEvents, type Key } from "node:readline";
 import { createStreamRenderer, renderHistory } from "../render.js";
 import { getRL, closeRL } from "../cli.js";
 import type OpenAI from "openai";
-import type { StreamRenderer, UiAdapter, UiEvent } from "./types.js";
+import type { StreamRenderer, UiAdapter, UiEvent, UiShortcut } from "./types.js";
 
 export class ClassicAdapter implements UiAdapter {
   private rl: readline.Interface | null = null;
   private suspended = false;
   private cursorHidden = false;
+  private shortcutHandler: ((shortcut: UiShortcut) => void) | null = null;
+  private keypressHandler: ((str: string, key: Key) => void) | null = null;
   private readonly HIDE_CURSOR = "\x1b[?25l";
   private readonly SHOW_CURSOR = "\x1b[?25h";
 
   async start(): Promise<void> {
     // readline completer 会在 index.ts 初始化时设置，这里只获取引用
     this.rl = getRL();
+    if (process.stdin.isTTY) {
+      emitKeypressEvents(process.stdin, this.rl);
+      this.keypressHandler = (_str, key) => {
+        if (key?.ctrl && key.name === "y") {
+          this.shortcutHandler?.("toggleYolo");
+        }
+      };
+      process.stdin.on("keypress", this.keypressHandler);
+    }
   }
 
   async stop(): Promise<void> {
     this.showCursor();
+    this.detachKeypressHandler();
     closeRL();
     this.rl = null;
   }
@@ -114,6 +127,10 @@ export class ClassicAdapter implements UiAdapter {
     }
   }
 
+  setShortcutHandler(handler: ((shortcut: UiShortcut) => void) | null): void {
+    this.shortcutHandler = handler;
+  }
+
   renderHistory(messages: OpenAI.ChatCompletionMessageParam[]): void {
     renderHistory(messages);
   }
@@ -142,6 +159,13 @@ export class ClassicAdapter implements UiAdapter {
     if (!this.cursorHidden) {
       process.stdout.write(this.HIDE_CURSOR);
       this.cursorHidden = true;
+    }
+  }
+
+  private detachKeypressHandler(): void {
+    if (this.keypressHandler) {
+      process.stdin.off("keypress", this.keypressHandler);
+      this.keypressHandler = null;
     }
   }
 }
